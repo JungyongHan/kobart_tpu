@@ -60,10 +60,6 @@ class ArgsBase():
                             default='tpu',
                             choices=['tpu', 'gpu', 'cpu'],
                             help='select accelerator')
-        parser.add_argument('--num_cores',
-                            type=int,
-                            default=8,
-                            help='number of TPU cores')
         parser.add_argument('--gradient_clip_val',
                             type=float,
                             default=1.0,
@@ -127,7 +123,7 @@ def train_kobart(rank, args):
     # Configure TPU-specific trainer settings
     trainer = L.Trainer(max_epochs=args.max_epochs,
                         accelerator=args.accelerator,
-                        devices=args.num_cores,
+                        devices='auto',
                         num_nodes=1,  # Using a single TPU VM with multiple cores
                         precision=args.precision,  # Use bfloat16 for TPU
                         gradient_clip_val=args.gradient_clip_val,
