@@ -71,6 +71,8 @@ class ArgsBase():
 
 
 if __name__ == '__main__':
+    if args.accelerator == 'tpu':
+        args.num_gpus = "auto"
     parser = ArgsBase.add_model_specific_args(parser)
     parser = KobartSummaryModule.add_model_specific_args(parser)
     tokenizer = PreTrainedTokenizerFast.from_pretrained('gogamza/kobart-base-v1')
