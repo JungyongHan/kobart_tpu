@@ -157,4 +157,4 @@ if __name__ == '__main__':
         os.makedirs(os.path.join(args.checkpoint, "model_chp"), exist_ok=True)
     
     # Launch training across TPU cores using XLA multiprocessing
-    xmp.spawn(train_kobart, args=(args,), nprocs=args.num_cores)
+    xmp.spawn(train_kobart, args=(args,))
