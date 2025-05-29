@@ -11,6 +11,10 @@ from torch.utils.data import Dataset, DataLoader
 import lightning as L
 from functools import partial
 
+# Import TPU-specific modules
+import torch_xla.core.xla_model as xm
+import torch_xla.distributed.parallel_loader as pl
+
 class KoBARTSummaryDataset(Dataset):
     def __init__(self, file, tokenizer, max_len, ignore_index=-100):
         super().__init__()
@@ -170,19 +174,61 @@ class KobartSummaryModule(L.LightningDataModule):
                                 self.max_len)
 
     def train_dataloader(self):
-        train = DataLoader(self.train,
-                           batch_size=self.batch_size,
-                           num_workers=self.num_workers, shuffle=True)
-        return train
+        # Create TPU-optimized DataLoader using ParallelLoader
+        train_sampler = torch.utils.data.distributed.DistributedSampler(
+            self.train,
+            num_replicas=xm.xrt_world_size(),
+            rank=xm.get_ordinal(),
+            shuffle=True
+        )
+        
+        train_loader = DataLoader(
+            self.train,
+            batch_size=self.batch_size,
+            sampler=train_sampler,
+            num_workers=self.num_workers
+        )
+        
+        # Wrap with ParallelLoader for TPU optimization
+        train_device_loader = pl.MpDeviceLoader(train_loader, xm.xla_device())
+        return train_device_loader
 
     def val_dataloader(self):
-        val = DataLoader(self.test,
-                         batch_size=self.batch_size,
-                         num_workers=self.num_workers, shuffle=False)
-        return val
+        # Create TPU-optimized DataLoader using ParallelLoader
+        val_sampler = torch.utils.data.distributed.DistributedSampler(
+            self.test,
+            num_replicas=xm.xrt_world_size(),
+            rank=xm.get_ordinal(),
+            shuffle=False
+        )
+        
+        val_loader = DataLoader(
+            self.test,
+            batch_size=self.batch_size,
+            sampler=val_sampler,
+            num_workers=self.num_workers
+        )
+        
+        # Wrap with ParallelLoader for TPU optimization
+        val_device_loader = pl.MpDeviceLoader(val_loader, xm.xla_device())
+        return val_device_loader
 
     def test_dataloader(self):
-        test = DataLoader(self.test,
-                          batch_size=self.batch_size,
-                          num_workers=self.num_workers, shuffle=False)
-        return test
+        # Create TPU-optimized DataLoader using ParallelLoader
+        test_sampler = torch.utils.data.distributed.DistributedSampler(
+            self.test,
+            num_replicas=xm.xrt_world_size(),
+            rank=xm.get_ordinal(),
+            shuffle=False
+        )
+        
+        test_loader = DataLoader(
+            self.test,
+            batch_size=self.batch_size,
+            sampler=test_sampler,
+            num_workers=self.num_workers
+        )
+        
+        # Wrap with ParallelLoader for TPU optimization
+        test_device_loader = pl.MpDeviceLoader(test_loader, xm.xla_device())
+        return test_device_loader

@@ -6,6 +6,9 @@ import lightning as L
 from transformers import BartForConditionalGeneration, PreTrainedTokenizerFast
 from transformers.optimization import get_linear_schedule_with_warmup
 
+import torch_xla.core.xla_model as xm
+import torch_xla.distributed.parallel_loader as pl
+
 from loguru import logger
 
 class KoBARTConditionalGeneration(L.LightningModule):
@@ -58,7 +61,6 @@ class KoBARTConditionalGeneration(L.LightningModule):
         return [optimizer], [lr_scheduler]
     
     def forward(self, inputs):
-        
         attention_mask = inputs['input_ids'].ne(self.pad_token_id).float()
         decoder_attention_mask = inputs['decoder_input_ids'].ne(self.pad_token_id).float()
         
@@ -71,12 +73,16 @@ class KoBARTConditionalGeneration(L.LightningModule):
     def training_step(self, batch, batch_idx):
         outs = self(batch)
         loss = outs.loss
-        self.log('train_loss', loss, prog_bar=True)
+        # Use XLA's mark_step to optimize TPU performance
+        xm.mark_step()
+        self.log('train_loss', loss, prog_bar=True, sync_dist=True)
         return loss
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
         outs = self(batch)
         loss = outs['loss']
+        # Use XLA's mark_step to optimize TPU performance
+        xm.mark_step()
         self.outputs[dataloader_idx].append({"loss": loss})
 
     def on_validation_epoch_end(self):
@@ -84,5 +90,5 @@ class KoBARTConditionalGeneration(L.LightningModule):
         for lst in self.outputs.values():
             flat_outputs.extend(lst)
         loss = torch.stack([x["loss"] for x in flat_outputs]).mean()
-        self.log("val_loss", loss, prog_bar=True)
+        self.log("val_loss", loss, prog_bar=True, sync_dist=True)
         self.outputs.clear()

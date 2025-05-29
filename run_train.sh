@@ -1,3 +1,5 @@
+#!/bin/bash
+
 python train.py --gradient_clip_val 1.0 \
                 --max_epochs 100 \
                 --checkpoint checkpoint \
@@ -6,5 +8,5 @@ python train.py --gradient_clip_val 1.0 \
                 --batch_size 32 \
                 --num_workers 4 \
                 --precision bf16-mixed \
-                --train_file "./data/train.csv" \
-                --test_file "./data/test.csv"
+                --train_file "../summary/dataset/news_data.csv" \
+                --test_file "../summary/dataset/2022_2025.csv"
